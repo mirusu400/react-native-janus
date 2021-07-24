@@ -1,6 +1,6 @@
 import JanusVideoRoomPublisher from "./JanusVideoRoomPublisher";
-import JanusPlugin from "./../../utils/JanusPlugin";
-import Janus from "./../../Janus";
+import JanusPlugin from "../../utils/JanusPlugin";
+import Janus from "../../Janus";
 
 export default class JanusVideoRoomPlugin extends JanusPlugin {
   /**
@@ -413,15 +413,18 @@ export default class JanusVideoRoomPlugin extends JanusPlugin {
           type: offer.type,
           sdp: offer.sdp,
         }
-      );
+      ).then(() => {
+        this.pc.setRemoteDescription(
+          new Janus.RTCSessionDescription({
+            sdp: response.jsep.sdp,
+            type: response.jsep.type,
+          })
+        );
+        this.isRemoteDescriptionSet = true;
+        
+      });
 
-      await this.pc.setRemoteDescription(
-        new Janus.RTCSessionDescription({
-          sdp: response.jsep.sdp,
-          type: response.jsep.type,
-        })
-      );
-      this.isRemoteDescriptionSet = true;
+      
 
       for (const candidate of this.cachedCandidates) {
         await this.pc.addIceCandidate(candidate);
@@ -469,25 +472,27 @@ export default class JanusVideoRoomPlugin extends JanusPlugin {
         room: this.roomID,
         ptype: "subscriber",
         feed: publisher.id,
-        private_id: privateID,
+        // private_id: 0,
+      }).then((joinResponse) => {
+        if (
+          joinResponse &&
+          joinResponse.plugindata &&
+          joinResponse.plugindata.data &&
+          joinResponse.plugindata.data.videoroom === "attached"
+        ) {
+          // OK
+        }
+        this.pc.setRemoteDescription(
+          new Janus.RTCSessionDescription({
+            sdp: joinResponse.jsep.sdp,
+            type: joinResponse.jsep.type,
+          })
+        );
+        this.isRemoteDescriptionSet = true;
+
       });
 
-      if (
-        joinResponse &&
-        joinResponse.plugindata &&
-        joinResponse.plugindata.data &&
-        joinResponse.plugindata.data.videoroom === "attached"
-      ) {
-        // OK
-      }
-
-      await this.pc.setRemoteDescription(
-        new Janus.RTCSessionDescription({
-          sdp: joinResponse.jsep.sdp,
-          type: joinResponse.jsep.type,
-        })
-      );
-      this.isRemoteDescriptionSet = true;
+      
 
       for (const candidate of this.cachedCandidates) {
         await this.pc.addIceCandidate(candidate);
